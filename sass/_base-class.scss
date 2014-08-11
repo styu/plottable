@@ -12,6 +12,7 @@ html, body {
 html { font-size: 62.5%; } // base font is 10px
 
 body {
+  position: relative;
   @include rem(font-size, $font-size-base);
   @include relative-line-height($line-height-base-px, $font-size-base);
 
@@ -26,26 +27,21 @@ body {
 h1, h2, h3, h4 {
   text-transform: uppercase;
   font-family: $font-headers;
-
-  &.subtitle {
-    @include rem(font-size, 20px);
-    margin-bottom: 0;
-  }
 }
 
 h1 {
-  @include rem(font-size, 32px);
-  @include relative-line-height(30px, 32px);
+  @include rem(font-size, 24px);
+  @include relative-line-height(22px, 24px);
 }
 
 h2 {
-  @include rem(font-size, 20px);
-  @include relative-line-height(20px, 20px);
+  @include rem(font-size, 18px);
+  @include relative-line-height(20px, 18px);
 }
 
 h3 {
-  @include rem(font-size, 18px);
-  @include relative-line-height(18px, 18px);
+  @include rem(font-size, 16px);
+  @include relative-line-height(18px, 16px);
 
   span.badge {
     display: inline-block;
@@ -64,21 +60,15 @@ p {
 @media (min-width: $screen-sm-min) {
 
   h1 {
-    @include rem(font-size, 75px);
+    @include rem(font-size, 36px);
   }
 
   h2 {
-    @include rem(font-size, 55px);
+    @include rem(font-size, 24px);
   }
 
   h3 {
-    @include rem(font-size, 28px);
-  }
-
-  h1, h2, h3 {
-    &.subtitle {
-      @include rem(font-size, 35px);
-    }
+    @include rem(font-size, 18px);
   }
 }
 
@@ -118,8 +108,7 @@ a, button, input[type="submit"] {
 
     .no-touch &:hover,
     .touch &:active {
-      border-color: $COLOR_BLACK1;
-      color: $COLOR_BLACK1;
+      @include opacity(0.6);
       text-decoration: none;
     }
 
