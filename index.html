@@ -101,72 +101,59 @@ page_id: page-overview
         <div class="row">
           <div id="example-chart-1-source" class="col-sm-8 col-md-offset-2">
 {% highlight javascript %}
-function makeCommiterChart(svg, commitData, contributorData) {
+function makeChart(commitData) {
+  // Define the scales that will map data to visual properties
   var xScale = new Plottable.Scale.Time();
-  var yScaleCommits = new Plottable.Scale.Linear();
-  var yScaleContrib = new Plottable.Scale.Linear();
+  var yScale = new Plottable.Scale.Linear();
+  var colorScale = new Plottable.Scale.Color("20")
+      .domain(["Daniel Mane", "Justin Lan", "Ashwin Ramaswamy", "Bill Dwyer", "crmorford", "Brian Malehorn", "lewin"  , "other"])
+      .range(["#ff7f0e"     , "#1f77b4"   , "#2ca02c"         , "#d62728"   , "#9467bd"  , "#8c564b"       , "#e377c2", "#000"]);
 
-  var colorScale = new Plottable.Scale.Color("10");
+  // Create the components we use: axes, gridlines, and a legend
+  var xAxis = new Plottable.Axis.Time(xScale, "bottom");
+  var yAxis = new Plottable.Axis.Numeric(yScale, "left", hourFormatter);
+  var gridlines = new Plottable.Component.Gridlines(xScale, yScale);
+  var legend = new Plottable.Component.Legend(colorScale);
 
-  var format = d3.time.format("%Y/%m/%d");
-  var xAxis = new Plottable.Axis.Numeric(xScale, "bottom", format);
-  var yAxisCommits = new Plottable.Axis.Numeric(yScaleCommits, "left");
-  var yAxisContrib = new Plottable.Axis.Numeric(yScaleContrib, "right");
+  // Create the scatter plot - this where most of the action happens; it grabs keyed values out of the data store
+  // and then projects it through our scales. In the case of yAxis, it uses custom logic (the hourAccessor) to compute
+  // what hour the commit was given the date object attached.
+  // We project through the colorScale to have fills that synchronize with the legend, and then project constant
+  // values for radius and opacity, although we could have used a scale to have these be data-dependent as well.
+  var scatter = new Plottable.Plot.Scatter(commitData, xScale, yScale)
+                        .project("x", "parsedDate", xScale)
+                        .project("y", hourAccessor, yScale)
+                        .project("fill", "authorName", colorScale)
+                        .project("r", 5)
+                        .project("opacity", 0.4 );
 
-  var lineCommits = new Plottable.Plot.Area(commitData, xScale, yScaleCommits)
-                    .project("x", "parsedDate", xScale)
-                    .project("y", "nCommits", yScaleCommits)
-                    .project("fill", function() {return "Commits"}, colorScale);
-
-  var lineContrib = new Plottable.Plot.Line(contributorData, xScale, yScaleContrib)
-                    .project("x", "parsedDate", xScale)
-                    .project("y", "nContrib", yScaleContrib)
-                    .project("stroke", function() {return "Contributors"}, colorScale);
-
-  var grid = new Plottable.Component.Gridlines(xScale, null);
-
-  var group = lineCommits.merge(lineContrib).merge(grid);
-
-  var leftLabel = new Plottable.Component.AxisLabel("Number of Commits", "vertical-left");
-  var rightLabel = new Plottable.Component.AxisLabel("Number of Contributors", "vertical-left");
-  var legend = new Plottable.Component.Legend(colorScale).xAlign("center");
-
-  var title = new Plottable.Component.TitleLabel("Plottable - Commits & Contributors over Time");
-  var titleAndLegend = new Plottable.Component.Table([[title], [legend]]).xAlign("center");
-
-  var table = new Plottable.Component.Table([
-    [leftLabel, yAxisCommits, group, yAxisContrib, rightLabel],
-    [null, null, xAxis, null, null],
-  ]);
-
-  var outerMost = new Plottable.Component.Table([[titleAndLegend], [table]]).renderTo(svg);
-
-  xScale._autoPad = false;
-  xScale.autoDomain();
+  // finally, merge the pieces together into a StandardChart, render it, and attach an interaction.
+  var center = gridlines.merge(scatter).merge(legend);
+  new Plottable.Template.StandardChart().center(center).xAxis(xAxis).yAxis(yAxis).renderTo("svg");
+  new Plottable.Interaction.PanZoom(scatter, xScale, new Plottable.Scale.Linear()).registerWithComponent();
 }
 
-window.onload = function() {
-  d3.json("gitstats2.json", function(data) {
-    data.forEach(function(d) {
-      d.parsedDate = new Date(d.date);
-      d.name = d.name === "ashwinraman9" ? "aramaswamy" : d.name;
-    });
-    data.sort(function(a, b) {return a.parsedDate - b.parsedDate})
-    var nCommits = 0;
-    commitData = data.map(function(d) {
-      return {parsedDate: d.parsedDate, nCommits: ++nCommits};
-    });
-    var contribSet = d3.set();
-    contribData = [];
-    data.forEach(function(d) {
-      var c = d.name;
-      contribData.push({parsedDate: d.parsedDate, nContrib: contribSet.size()});
-      contribSet.add(c);
-      contribData.push({parsedDate: d.parsedDate, nContrib: contribSet.size()});
-    });
-    var svg = d3.select("#example-chart-1").append("svg").attr("width", "100%").attr("height", 600);
-    makeCommiterChart(svg, commitData, contribData);
-  });
+
+function hourAccessor(d) {
+  var date = d.parsedDate;
+  var hour =  date.getHours() + date.getMinutes() / 60;
+  hour = hour < 5 ? hour + 24 : hour;
+  return hour;
+}
+
+
+function hourFormatter(hour) {
+  if (hour < 12) {
+    return hour + "AM";
+  } else if (hour === 12) {
+    return "12PM";
+  } else if (hour < 24) {
+    return (hour - 12) + "PM";
+  } else if (hour == 24) {
+    return "12AM";
+  } else {
+    return (hour - 24) + "AM";
+  }
 }
 {% endhighlight %}
           </div>
@@ -220,74 +207,76 @@ window.onload = function() {
 
   <script src="{{ site.baseurl }}/build/js/compiled.min.js"></script>
   <script id="example-1-source">
-    function makeCommiterChart(svg, commitData, contributorData) {
+    function makeChart(commitData) {
+      // Define the scales that will map data to visual properties
       var xScale = new Plottable.Scale.Time();
-      var yScaleCommits = new Plottable.Scale.Linear();
-      var yScaleContrib = new Plottable.Scale.Linear();
+      var yScale = new Plottable.Scale.Linear();
+      var colorScale = new Plottable.Scale.Color("20")
+          .domain(["Daniel Mane", "Justin Lan", "Ashwin Ramaswamy", "Bill Dwyer", "crmorford", "Brian Malehorn", "lewin"  , "other"])
+          .range(["#ff7f0e"     , "#1f77b4"   , "#2ca02c"         , "#d62728"   , "#9467bd"  , "#8c564b"       , "#e377c2", "#000"]);
 
-      var colorScale = new Plottable.Scale.Color("10");
+      // Create the components we use: axes, gridlines, and a legend
+      var xAxis = new Plottable.Axis.Time(xScale, "bottom");
+      var yAxis = new Plottable.Axis.Numeric(yScale, "left", hourFormatter);
+      var gridlines = new Plottable.Component.Gridlines(xScale, yScale);
+      var legend = new Plottable.Component.Legend(colorScale);
 
-      var format = d3.time.format("%Y/%m/%d");
-      var xAxis = new Plottable.Axis.Numeric(xScale, "bottom", format);
-      var yAxisCommits = new Plottable.Axis.Numeric(yScaleCommits, "left");
-      var yAxisContrib = new Plottable.Axis.Numeric(yScaleContrib, "right");
+      // Create the scatter plot - this where most of the action happens; it grabs keyed values out of the data store
+      // and then projects it through our scales. In the case of yAxis, it uses custom logic (the hourAccessor) to compute
+      // what hour the commit was given the date object attached.
+      // We project through the colorScale to have fills that synchronize with the legend, and then project constant
+      // values for radius and opacity, although we could have used a scale to have these be data-dependent as well.
+      var scatter = new Plottable.Plot.Scatter(commitData, xScale, yScale)
+                            .project("x", "parsedDate", xScale)
+                            .project("y", hourAccessor, yScale)
+                            .project("fill", "authorName", colorScale)
+                            .project("r", 5)
+                            .project("opacity", 0.4 );
 
-      var lineCommits = new Plottable.Plot.Area(commitData, xScale, yScaleCommits)
-                        .project("x", "parsedDate", xScale)
-                        .project("y", "nCommits", yScaleCommits)
-                        .project("fill", function() {return "Commits"}, colorScale);
-
-      var lineContrib = new Plottable.Plot.Line(contributorData, xScale, yScaleContrib)
-                        .project("x", "parsedDate", xScale)
-                        .project("y", "nContrib", yScaleContrib)
-                        .project("stroke", function() {return "Contributors"}, colorScale);
-
-      var grid = new Plottable.Component.Gridlines(xScale, null);
-
-      var group = lineCommits.merge(lineContrib).merge(grid);
-
-      var leftLabel = new Plottable.Component.AxisLabel("Number of Commits", "vertical-left");
-      var rightLabel = new Plottable.Component.AxisLabel("Number of Contributors", "vertical-left");
-      var legend = new Plottable.Component.Legend(colorScale).xAlign("center");
-
-      var title = new Plottable.Component.TitleLabel("Plottable - Commits & Contributors over Time");
-      var titleAndLegend = new Plottable.Component.Table([[title], [legend]]).xAlign("center");
-
-      var table = new Plottable.Component.Table([
-        [leftLabel, yAxisCommits, group, yAxisContrib, rightLabel],
-        [null, null, xAxis, null, null],
-        ]);
-
-      var outerMost = new Plottable.Component.Table([[titleAndLegend], [table]]).renderTo(svg);
-
-      xScale._autoPad = false;
-      xScale.autoDomain();
-
+      // finally, merge the pieces together into a StandardChart, render it, and attach an interaction.
+      var center = gridlines.merge(scatter).merge(legend);
+      new Plottable.Template.StandardChart().center(center).xAxis(xAxis).yAxis(yAxis).renderTo("svg");
+      new Plottable.Interaction.PanZoom(scatter, xScale, new Plottable.Scale.Linear()).registerWithComponent();
     }
 
-    $(window).on('load', function() {
-      d3.json("{{ site.baseurl }}/examples/gitstats2.json", function(data) {
-        data.forEach(function(d) {
-          d.parsedDate = new Date(d.date);
-          d.name = d.name === "ashwinraman9" ? "aramaswamy" : d.name;
-        });
-        data.sort(function(a, b) {return a.parsedDate - b.parsedDate})
-        var nCommits = 0;
-        commitData = data.map(function(d) {
-          return {parsedDate: d.parsedDate, nCommits: ++nCommits};
-        });
-        var contribSet = d3.set();
-        contribData = [];
-        data.forEach(function(d) {
-          var c = d.name;
-          contribData.push({parsedDate: d.parsedDate, nContrib: contribSet.size()});
-          contribSet.add(c);
-          contribData.push({parsedDate: d.parsedDate, nContrib: contribSet.size()});
-        });
-        var svg = d3.select("#example-chart-1").append("svg").attr("width", "100%").attr("height", 600);
-        makeCommiterChart(svg, commitData, contribData);
-      });
-    });
+
+    function hourAccessor(d) {
+      var date = d.parsedDate;
+      var hour =  date.getHours() + date.getMinutes() / 60;
+      hour = hour < 5 ? hour + 24 : hour;
+      return hour;
+    }
+
+
+    function hourFormatter(hour) {
+      if (hour < 12) {
+        return hour + "AM";
+      } else if (hour === 12) {
+        return "12PM";
+      } else if (hour < 24) {
+        return (hour - 12) + "PM";
+      } else if (hour == 24) {
+        return "12AM";
+      } else {
+        return (hour - 24) + "AM";
+      }
+    }
+
+
+      window.onload = function() {
+          d3.json("examples/data/src-aggregated-commits.json", function(data) {
+              var authors = ["Daniel Mane", "Justin Lan", "Ashwin Ramaswamy", "Bill Dwyer", "crmorford", "Brian Malehorn", "lewin"];
+              data.forEach(function(d) {
+                d.parsedDate = new Date(d.authorDate.seconds * 1000);
+                a = d.authorName;
+                d.authorName = authors.indexOf(a) !== -1 ? a : "other";
+              });
+              data = data.filter(function(d) {return d.additions > 20});
+              var svg = d3.select("#example-chart-1").append("svg").attr("width", "100%").attr("height", 600);
+              makeChart(data);
+          });
+      }
+
   </script>
   <script>
     (function() {
