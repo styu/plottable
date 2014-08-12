@@ -9,14 +9,14 @@ page_id: page-examples
       <div class="col-md-3">
         <h3>
           <span class="badge">Example</span><br>
-          Plottable Commits and Contributors vs Time
+          Plottable Commits Over Time
         </h3>
         <p>This Plottable chart displays large commits to Plottable over time, with the y-axis showing time of day and the x-axis showing date. The commits are color-coded based on contributor. Try scrolling to zoom in and out of it!</p>
         <p><a id="button-show-source-example-1-source" href="#example-1-source" class="button button-small">Show Source</a></p>
       </div>
 
       <div id="example-chart-1-container" class="col-md-8 col-md-offset-1">
-        <div id="example-chart-1"></div>
+        <svg id="example-chart-1" class="example-svg"></svg>
       </div>
 
     </div>
@@ -25,13 +25,11 @@ page_id: page-examples
   <div id="example-chart-1-source" style="display: none;">
     <div id="page-content">
 {% highlight javascript %}
-function makeChart(commitData) {
+function commitScatterPlot(commitData) {
   // Define the scales that will map data to visual properties
   var xScale = new Plottable.Scale.Time();
   var yScale = new Plottable.Scale.Linear();
-  var colorScale = new Plottable.Scale.Color("20")
-      .domain(["Daniel Mane", "Justin Lan", "Ashwin Ramaswamy", "Bill Dwyer", "crmorford", "Brian Malehorn", "lewin"  , "other"])
-      .range(["#ff7f0e"     , "#1f77b4"   , "#2ca02c"         , "#d62728"   , "#9467bd"  , "#8c564b"       , "#e377c2", "#000"]);
+  var colorScale = new Plottable.Scale.Color("10");
 
   // Create the components we use: axes, gridlines, and a legend
   var xAxis = new Plottable.Axis.Time(xScale, "bottom");
@@ -57,14 +55,12 @@ function makeChart(commitData) {
   new Plottable.Interaction.PanZoom(scatter, xScale, new Plottable.Scale.Linear()).registerWithComponent();
 }
 
-
 function hourAccessor(d) {
   var date = d.parsedDate;
   var hour =  date.getHours() + date.getMinutes() / 60;
   hour = hour < 5 ? hour + 24 : hour;
   return hour;
 }
-
 
 function hourFormatter(hour) {
   if (hour < 12) {
@@ -79,6 +75,7 @@ function hourFormatter(hour) {
     return (hour - 24) + "AM";
   }
 }
+
 {% endhighlight %}
     </div>
   </div>
