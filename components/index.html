@@ -6,7 +6,81 @@ page_id: page-components
   <div class="row">
 
     <div class="col-md-12">
-      <h1 style="text-align: center;">Listing of components to come</h1>
+      <h1 style="text-align: center;">Listing of Plottable Components</h1>
+      <script src="component_example_list.js"></script>
+      <script>
+      window.onload = function() {
+        // axis
+        var axisTypes = ["numeric", "category"];
+        var orient = ["bottom", "top", "right", "left"];
+        axisTypes.forEach(function(type) {
+          orient.forEach(function(or) {
+            makeTitle("axis " + type + " " + or);
+            axis(type, or);
+          })
+        });
+
+        orient.forEach(function(or) {
+          makeTitle("category axis wrapping " + or);
+          catAxisWrap(or);
+        });
+
+        // plots
+        makeTitle("vertical bar plot");
+        verticalBarPlot();
+        makeTitle("horizontal bar plot");
+        horizontalBarPlot();
+
+        var xyPlotTypes = ["area", "line", "scatter"];
+        xyPlotTypes.forEach(function(type) {
+          makeTitle(type + " plot");
+          makeXYPlot(type);
+        });
+        makeTitle("area plot with stroke");
+        makeAreaStroke();
+
+        xyPlotTypes.forEach(function(type) {
+          makeTitle("multiple " + type + " plot");
+          makeXYPlotMulti(type);
+        });
+
+        makeTitle("grid plot");
+        gridPlot();
+
+        // labels
+        var labelOrientations = ["vertical-left", "vertical-right", "horizontal"];
+        labelOrientations.forEach(function(or) {
+          makeTitle(or + " label");
+          label("ABCDEFGHIJKLMNOPQRSTUVWXYZ", or);
+        });
+
+        // gridlines
+        makeTitle("x gridlines");
+        gridline(true, false);
+        makeTitle("y gridlines");
+        gridline(false, true);
+        makeTitle("x/y gridlines")
+        gridline(true, true);
+
+        // legends
+        makeTitle("interactive legend");
+        legend();
+
+        // interactions
+        makeTitle("xy drag box");
+        xydrag();
+        makeTitle("x drag box");
+        xdrag();
+        makeTitle("pan zoom interaction");
+        panZoomInteraction();
+
+        // complete examples
+        makeTitle("animations");
+        animate1();
+        animate2();
+        animate3();
+      }
+      </script>
     </div>
 
   </div>
