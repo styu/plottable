@@ -139,12 +139,12 @@ function legend() {
 }
 
 function gridline(showVertical, showHorizontal) {
-    var xScale = showVertical ? new Plottable.Scale.Linear() : null;
-    var yScale = showHorizontal ? new Plottable.Scale.Linear() : null;
+    var xScale = new Plottable.Scale.Linear();
+    var yScale = new Plottable.Scale.Linear();
 
-    var gridlines = new Plottable.Component.Gridlines(xScale, yScale);
-    var xAxis = showVertical ? new Plottable.Axis.Numeric(xScale, "bottom") : null;
-    var yAxis = showHorizontal ? new Plottable.Axis.Numeric(yScale, "left") : null;
+    var gridlines = new Plottable.Component.Gridlines(showVertical ? xScale : null, showHorizontal ? yScale : null);
+    var xAxis = new Plottable.Axis.Numeric(xScale, "bottom");
+    var yAxis = new Plottable.Axis.Numeric(yScale, "left");
     var table = new Plottable.Component.Table([[yAxis, gridlines], [null, xAxis]]);
     return table;
 }
