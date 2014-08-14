@@ -986,3 +986,5 @@ function makeBarChart() {
   chart.renderTo("#chart");
 }
 {% endhighlight %}
+
+![]({{ site.baseurl }}/build/images/tutorials/wordWrap.png)
