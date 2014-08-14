@@ -33,6 +33,11 @@ declare module Plottable {
             */
             function intersection(set1: D3.Set, set2: D3.Set): D3.Set;
             /**
+            * Take an accessor object (may be a string to be made into a key, or a value, or a color code)
+            * and "activate" it by turning it into a function in (datum, index, metadata)
+            */
+            function _accessorize(accessor: any): IAccessor;
+            /**
             * Takes two sets and returns the union
             *
             * @param{D3.Set} set1 The first set
@@ -40,8 +45,10 @@ declare module Plottable {
             * @return{D3.Set} A set that contains elements that appear in either set1 or set2
             */
             function union(set1: D3.Set, set2: D3.Set): D3.Set;
-            function accessorize(accessor: any): IAccessor;
-            function applyAccessor(accessor: IAccessor, dataSource: DataSource): (d: any, i: number) => any;
+            /**
+            * Take an accessor object, activate it, and partially apply it to a Plot's datasource's metadata
+            */
+            function _applyAccessor(accessor: IAccessor, plot: Abstract.Plot): (d: any, i: number) => any;
             function uniq(strings: string[]): string[];
             function uniqNumbers(a: number[]): number[];
             /**
@@ -385,189 +392,107 @@ declare module Plottable {
 
 
 declare module Plottable {
-    module Abstract {
-        class Formatter {
-            constructor(precision: number);
-            /**
-            * Format an input value.
-            *
-            * @param {any} d The value to be formatted.
-            * @returns {string} The formatted value.
-            */
-            public format(d: any): string;
-            /**
-            * Gets the current precision of the Formatter.
-            * The meaning depends on the implementation.
-            *
-            * @returns {number} The current precision.
-            */
-            public precision(): number;
-            /**
-            * Sets the precision of the Formatter.
-            * The meaning depends on the implementation.
-            *
-            * @param {number} [value] The new precision.
-            * @returns {Formatter} The calling Formatter.
-            */
-            public precision(value: number): Formatter;
-            /**
-            * Checks if this formatter will show only unchanged values.
-            *
-            * @returns {boolean}
-            */
-            public showOnlyUnchangedValues(): boolean;
-            /**
-            * Sets whether this formatter will show only unchanged values.
-            * If true, inputs whose value is changed by the formatter will be formatted
-            * to an empty string.
-            *
-            * @param {boolean} showUnchanged Whether or not to show only unchanged values.
-            * @returns {Formatter} The calling Formatter.
-            */
-            public showOnlyUnchangedValues(showUnchanged: boolean): Formatter;
-        }
+    interface Formatter {
+        (d: any): string;
     }
-}
-
-
-declare module Plottable {
-    module Formatter {
-        class Identity extends Abstract.Formatter {
-            /**
-            * Creates an formatter that simply stringifies the input.
-            *
-            * @constructor
-            */
-            constructor();
-        }
-    }
-}
-
-
-declare module Plottable {
-    module Formatter {
-        class General extends Abstract.Formatter {
-            /**
-            * Creates a formatter that formats numbers to show no more than
-            * [precision] decimal places. All other values are stringified.
-            *
-            * @constructor
-            * @param {number} [precision] The maximum number of decimal places to display.
-            */
-            constructor(precision?: number);
-        }
-    }
-}
-
-
-declare module Plottable {
-    module Formatter {
-        class Fixed extends Abstract.Formatter {
-            /**
-            * Creates a formatter that displays exactly [precision] decimal places.
-            *
-            * @constructor
-            * @param {number} [precision] The number of decimal places to display.
-            */
-            constructor(precision?: number);
-        }
-    }
-}
-
-
-declare module Plottable {
-    module Formatter {
-        class Currency extends Fixed {
-            /**
-            * Creates a formatter for currency values.
-            *
-            * @param {number} [precision] The number of decimal places to show.
-            * @param {string} [symbol] The currency symbol to use.
-            * @param {boolean} [prefix] Whether to prepend or append the currency symbol.
-            *
-            * @returns {IFormatter} A formatter for currency values.
-            */
-            constructor(precision?: number, symbol?: string, prefix?: boolean);
-            public format(d: any): string;
-        }
-    }
-}
-
-
-declare module Plottable {
-    module Formatter {
-        class Percentage extends Fixed {
-            /**
-            * Creates a formatter for percentage values.
-            * Multiplies the supplied value by 100 and appends "%".
-            *
-            * @constructor
-            * @param {number} [precision] The number of decimal places to display.
-            */
-            constructor(precision?: number);
-            public format(d: any): string;
-        }
-    }
-}
-
-
-declare module Plottable {
-    module Formatter {
-        class SISuffix extends Abstract.Formatter {
-            /**
-            * Creates a formatter for values that displays [precision] significant figures.
-            *
-            * @constructor
-            * @param {number} [precision] The number of significant figures to display.
-            */
-            constructor(precision?: number);
-            /**
-            * Gets the current number of significant figures shown by the Formatter.
-            *
-            * @returns {number} The current precision.
-            */
-            public precision(): number;
-            /**
-            * Sets the number of significant figures to be shown by the Formatter.
-            *
-            * @param {number} [value] The new precision.
-            * @returns {Formatter} The calling SISuffix Formatter.
-            */
-            public precision(value: number): SISuffix;
-        }
-    }
-}
-
-
-declare module Plottable {
-    module Formatter {
-        class Custom extends Abstract.Formatter {
-            constructor(customFormatFunction: (d: any, formatter: Custom) => string, precision?: number);
-        }
-    }
-}
-
-
-declare module Plottable {
-    interface FilterFormat {
-        format: string;
-        filter: (d: any) => any;
-    }
-    module Formatter {
-        class Time extends Abstract.Formatter {
-            /**
-            * Creates a formatter that displays dates
-            *
-            * @constructor
-            */
-            constructor();
-        }
+    var MILLISECONDS_IN_ONE_DAY: number;
+    class Formatters {
+        /**
+        * Creates a formatter for currency values.
+        *
+        * @param {number} [precision] The number of decimal places to show (default 2).
+        * @param {string} [symbol] The currency symbol to use (default "$").
+        * @param {boolean} [prefix] Whether to prepend or append the currency symbol (default true).
+        * @param {boolean} [onlyShowUnchanged] Whether to return a value if value changes after formatting (default true).
+        *
+        * @returns {Formatter} A formatter for currency values.
+        */
+        static currency(precision?: number, symbol?: string, prefix?: boolean, onlyShowUnchanged?: boolean): (d: any) => string;
+        /**
+        * Creates a formatter that displays exactly [precision] decimal places.
+        *
+        * @param {number} [precision] The number of decimal places to show (default 3).
+        * @param {boolean} [onlyShowUnchanged] Whether to return a value if value changes after formatting (default true).
+        *
+        * @returns {Formatter} A formatter that displays exactly [precision] decimal places.
+        */
+        static fixed(precision?: number, onlyShowUnchanged?: boolean): (d: any) => string;
+        /**
+        * Creates a formatter that formats numbers to show no more than
+        * [precision] decimal places. All other values are stringified.
+        *
+        * @param {number} [precision] The number of decimal places to show (default 3).
+        * @param {boolean} [onlyShowUnchanged] Whether to return a value if value changes after formatting (default true).
+        *
+        * @returns {Formatter} A formatter for general values.
+        */
+        static general(precision?: number, onlyShowUnchanged?: boolean): (d: any) => string;
+        /**
+        * Creates a formatter that stringifies its input.
+        *
+        * @returns {Formatter} A formatter that stringifies its input.
+        */
+        static identity(): (d: any) => string;
+        /**
+        * Creates a formatter for percentage values.
+        * Multiplies the input by 100 and appends "%".
+        *
+        * @param {number} [precision] The number of decimal places to show (default 0).
+        * @param {boolean} [onlyShowUnchanged] Whether to return a value if value changes after formatting (default true).
+        *
+        * @returns {Formatter} A formatter for percentage values.
+        */
+        static percentage(precision?: number, onlyShowUnchanged?: boolean): (d: any) => string;
+        /**
+        * Creates a formatter for values that displays [precision] significant figures
+        * and puts SI notation.
+        *
+        * @param {number} [precision] The number of significant figures to show (default 3).
+        *
+        * @returns {Formatter} A formatter for SI values.
+        */
+        static siSuffix(precision?: number): (d: any) => string;
+        /**
+        * Creates a formatter that displays dates.
+        *
+        * @returns {Formatter} A formatter for time/date values.
+        */
+        static time(): (d: any) => string;
+        /**
+        * Creates a formatter for relative dates.
+        *
+        * @param {number} baseValue The start date (as epoch time) used in computing relative dates (default 0)
+        * @param {number} increment The unit used in calculating relative date values (default MILLISECONDS_IN_ONE_DAY)
+        * @param {string} label The label to append to the formatted string (default "")
+        *
+        * @returns {Formatter} A formatter for time/date values.
+        */
+        static relativeDate(baseValue?: number, increment?: number, label?: string): (d: any) => string;
     }
 }
 
 
 declare module Plottable {
     var version: string;
+}
+
+
+declare module Plottable {
+    module Core {
+        class Colors {
+            static CORAL_RED: string;
+            static INDIGO: string;
+            static ROBINS_EGG_BLUE: string;
+            static FERN: string;
+            static BURNING_ORANGE: string;
+            static ROYAL_HEATH: string;
+            static CONIFER: string;
+            static CERISE_RED: string;
+            static BRIGHT_SUN: string;
+            static JACARTA: string;
+            static PLOTTABLE_COLORS: string[];
+        }
+    }
 }
 
 
@@ -581,27 +506,57 @@ declare module Plottable {
 
 declare module Plottable {
     module Core {
+        /**
+        * This interface represents anything in Plottable which can have a listener attached.
+        * Listeners attach by referencing the Listenable's broadcaster, and calling registerListener
+        * on it.
+        *
+        * e.g.:
+        * listenable: Plottable.IListenable;
+        * listenable.broadcaster.registerListener(callbackToCallOnBroadcast)
+        */
         interface IListenable {
             broadcaster: Broadcaster;
         }
+        /**
+        * This interface represents the callback that should be passed to the Broadcaster on a Listenable.
+        *
+        * The callback will be called with the attached Listenable as the first object, and optional arguments
+        * as the subsequent arguments.
+        *
+        * The Listenable is passed as the first argument so that it is easy for the callback to reference the
+        * current state of the Listenable in the resolution logic.
+        */
         interface IBroadcasterCallback {
             (listenable: IListenable, ...args: any[]): any;
         }
+        /**
+        * The Broadcaster class is owned by an IListenable. Third parties can register and deregister listeners
+        * from the broadcaster. When the broadcaster.broadcast method is activated, all registered callbacks are
+        * called. The registered callbacks are called with the registered Listenable that the broadcaster is attached
+        * to, along with optional arguments passed to the `broadcast` method.
+        *
+        * The listeners are called synchronously.
+        */
         class Broadcaster extends Abstract.PlottableObject {
             public listenable: IListenable;
+            /**
+            * Construct a broadcaster, taking the Listenable that the broadcaster will be attached to.
+            *
+            * @constructor
+            * @param {IListenable} listenable The Listenable-object that this broadcaster is attached to.
+            */
             constructor(listenable: IListenable);
             /**
-            * Registers a callback to be called when the broadcast method is called. Also takes a listener which
-            * is used to support deregistering the same callback later, by passing in the same listener.
-            * If there is already a callback associated with that listener, then the callback will be replaced.
+            * Registers a callback to be called when the broadcast method is called. Also takes a key which
+            * is used to support deregistering the same callback later, by passing in the same key.
+            * If there is already a callback associated with that key, then the callback will be replaced.
             *
-            * This should NOT be called directly by a Component; registerToBroadcaster should be used instead.
-            *
-            * @param listener The listener associated with the callback.
+            * @param key The key associated with the callback. Key uniqueness is determined by deep equality.
             * @param {IBroadcasterCallback} callback A callback to be called when the Scale's domain changes.
             * @returns {Broadcaster} this object
             */
-            public registerListener(listener: any, callback: IBroadcasterCallback): Broadcaster;
+            public registerListener(key: any, callback: IBroadcasterCallback): Broadcaster;
             /**
             * Call all listening callbacks, optionally with arguments passed through.
             *
@@ -610,12 +565,12 @@ declare module Plottable {
             */
             public broadcast(...args: any[]): Broadcaster;
             /**
-            * Deregisters the callback associated with a listener.
+            * Deregisters the callback associated with a key.
             *
-            * @param listener The listener to deregister.
+            * @param key The key to deregister.
             * @returns {Broadcaster} this object
             */
-            public deregisterListener(listener: any): Broadcaster;
+            public deregisterListener(key: any): Broadcaster;
             /**
             * Deregisters all listeners and callbacks associated with the broadcaster.
             *
@@ -1183,6 +1138,10 @@ declare module Plottable {
         min: number;
         max: number;
     }
+    interface Point {
+        x: number;
+        y: number;
+    }
 }
 
 
@@ -1203,13 +1162,13 @@ declare module Plottable {
         /**
         * @param {any[][]} extents The list of extents to be reduced to a single
         *        extent.
-        * @param {Abstract.QuantitiveScale} scale
+        * @param {Abstract.QuantitativeScale} scale
         *        Since nice() must do different things depending on Linear, Log,
         *        or Time scale, the scale must be passed in for nice() to work.
         * @return {any[]} The domain, as a merging of all exents, as a [min, max]
         *                 pair.
         */
-        public computeDomain(extents: any[][], scale: Abstract.QuantitiveScale): any[];
+        public computeDomain(extents: any[][], scale: Abstract.QuantitativeScale): any[];
         /**
         * Sets the Domainer to pad by a given ratio.
         *
@@ -1282,14 +1241,14 @@ declare module Plottable {
 
 declare module Plottable {
     module Abstract {
-        class QuantitiveScale extends Scale {
+        class QuantitativeScale extends Scale {
             /**
-            * Creates a new QuantitiveScale.
+            * Creates a new QuantitativeScale.
             *
             * @constructor
-            * @param {D3.Scale.QuantitiveScale} scale The D3 QuantitiveScale backing the QuantitiveScale.
+            * @param {D3.Scale.QuantitativeScale} scale The D3 QuantitativeScale backing the QuantitativeScale.
             */
-            constructor(scale: D3.Scale.QuantitiveScale);
+            constructor(scale: D3.Scale.QuantitativeScale);
             /**
             * Retrieves the domain value corresponding to a supplied range value.
             *
@@ -1298,40 +1257,40 @@ declare module Plottable {
             */
             public invert(value: number): number;
             /**
-            * Creates a copy of the QuantitiveScale with the same domain and range but without any registered listeners.
+            * Creates a copy of the QuantitativeScale with the same domain and range but without any registered listeners.
             *
-            * @returns {QuantitiveScale} A copy of the calling QuantitiveScale.
+            * @returns {QuantitativeScale} A copy of the calling QuantitativeScale.
             */
-            public copy(): QuantitiveScale;
+            public copy(): QuantitativeScale;
             public domain(): any[];
-            public domain(values: any[]): QuantitiveScale;
+            public domain(values: any[]): QuantitativeScale;
             /**
-            * Sets or gets the QuantitiveScale's output interpolator
+            * Sets or gets the QuantitativeScale's output interpolator
             *
             * @param {D3.Transition.Interpolate} [factory] The output interpolator to use.
-            * @returns {D3.Transition.Interpolate|QuantitiveScale} The current output interpolator, or the calling QuantitiveScale.
+            * @returns {D3.Transition.Interpolate|QuantitativeScale} The current output interpolator, or the calling QuantitativeScale.
             */
             public interpolate(): D3.Transition.Interpolate;
-            public interpolate(factory: D3.Transition.Interpolate): QuantitiveScale;
+            public interpolate(factory: D3.Transition.Interpolate): QuantitativeScale;
             /**
-            * Sets the range of the QuantitiveScale and sets the interpolator to d3.interpolateRound.
+            * Sets the range of the QuantitativeScale and sets the interpolator to d3.interpolateRound.
             *
             * @param {number[]} values The new range value for the range.
             */
-            public rangeRound(values: number[]): QuantitiveScale;
+            public rangeRound(values: number[]): QuantitativeScale;
             /**
-            * Gets the clamp status of the QuantitiveScale (whether to cut off values outside the ouput range).
+            * Gets the clamp status of the QuantitativeScale (whether to cut off values outside the ouput range).
             *
             * @returns {boolean} The current clamp status.
             */
             public clamp(): boolean;
             /**
-            * Sets the clamp status of the QuantitiveScale (whether to cut off values outside the ouput range).
+            * Sets the clamp status of the QuantitativeScale (whether to cut off values outside the ouput range).
             *
-            * @param {boolean} clamp Whether or not to clamp the QuantitiveScale.
-            * @returns {QuantitiveScale} The calling QuantitiveScale.
+            * @param {boolean} clamp Whether or not to clamp the QuantitativeScale.
+            * @returns {QuantitativeScale} The calling QuantitativeScale.
             */
-            public clamp(clamp: boolean): QuantitiveScale;
+            public clamp(clamp: boolean): QuantitativeScale;
             /**
             * Generates tick values.
             *
@@ -1351,7 +1310,7 @@ declare module Plottable {
             * Retrieve a Domainer of a scale. A Domainer is responsible for combining
             * multiple extents into a single domain.
             *
-            * @return {QuantitiveScale} The scale's current domainer.
+            * @return {QuantitativeScale} The scale's current domainer.
             */
             public domainer(): Domainer;
             /**
@@ -1363,9 +1322,9 @@ declare module Plottable {
             * includes 0, etc., will be the responsability of the new domainer.
             *
             * @param {Domainer} domainer The domainer to be set.
-            * @return {QuantitiveScale} The calling scale.
+            * @return {QuantitativeScale} The calling scale.
             */
-            public domainer(domainer: Domainer): QuantitiveScale;
+            public domainer(domainer: Domainer): QuantitativeScale;
         }
     }
 }
@@ -1373,7 +1332,7 @@ declare module Plottable {
 
 declare module Plottable {
     module Scale {
-        class Linear extends Abstract.QuantitiveScale {
+        class Linear extends Abstract.QuantitativeScale {
             /**
             * Creates a new LinearScale.
             *
@@ -1395,9 +1354,15 @@ declare module Plottable {
 
 declare module Plottable {
     module Scale {
-        class Log extends Abstract.QuantitiveScale {
+        class Log extends Abstract.QuantitativeScale {
             /**
             * Creates a new Scale.Log.
+            *
+            * Warning: Log is deprecated; if possible, use ModifiedLog. Log scales are
+            * very unstable due to the fact that they can't handle 0 or negative
+            * numbers. The only time when you would want to use a Log scale over a
+            * ModifiedLog scale is if you're plotting very small data, such as all
+            * data < 1.
             *
             * @constructor
             * @param {D3.Scale.LogScale} [scale] The D3 Scale.Log backing the Scale.Log. If not supplied, uses a default scale.
@@ -1417,7 +1382,7 @@ declare module Plottable {
 
 declare module Plottable {
     module Scale {
-        class ModifiedLog extends Abstract.QuantitiveScale {
+        class ModifiedLog extends Abstract.QuantitativeScale {
             /**
             * Creates a new Scale.ModifiedLog.
             *
@@ -1549,6 +1514,7 @@ declare module Plottable {
             * @constructor
             * @param {string} [scaleType] the type of color scale to create
             *     (Category10/Category20/Category20b/Category20c).
+            * See https://github.com/mbostock/d3/wiki/Ordinal-Scales#categorical-colors
             */
             constructor(scaleType?: string);
         }
@@ -1558,7 +1524,7 @@ declare module Plottable {
 
 declare module Plottable {
     module Scale {
-        class Time extends Abstract.QuantitiveScale {
+        class Time extends Abstract.QuantitativeScale {
             /**
             * Creates a new Time Scale.
             *
@@ -1583,7 +1549,14 @@ declare module Plottable {
 
 declare module Plottable {
     module Scale {
-        class InterpolatedColor extends Abstract.QuantitiveScale {
+        /**
+        * This class implements a color scale that takes quantitive input and
+        * interpolates between a list of color values. It returns a hex string
+        * representing the interpolated color.
+        *
+        * By default it generates a linear scale internally.
+        */
+        class InterpolatedColor extends Abstract.QuantitativeScale {
             /**
             * Creates a InterpolatedColorScale.
             *
@@ -1652,10 +1625,19 @@ declare module Plottable {
 declare module Plottable {
     module Abstract {
         class Axis extends Component {
+            /**
+            * The css class applied to each end tick mark (the line on the end tick).
+            */
+            static END_TICK_MARK_CLASS: string;
+            /**
+            * The css class applied to each tick mark (the line on the tick).
+            */
             static TICK_MARK_CLASS: string;
+            /**
+            * The css class applied to each tick label (the text associated with the tick).
+            */
             static TICK_LABEL_CLASS: string;
-            public axisElement: D3.Selection;
-            constructor(scale: Scale, orientation: string, formatter?: any);
+            constructor(scale: Scale, orientation: string, formatter?: (d: any) => string);
             public remove(): void;
             /**
             * Gets the current width.
@@ -1686,16 +1668,16 @@ declare module Plottable {
             /**
             * Get the current formatter on the axis.
             *
-            * @returns {Abstract.Formatter} the axis formatter
+            * @returns {Formatter} the axis formatter
             */
             public formatter(): Formatter;
             /**
             * Sets a new tick formatter.
             *
-            * @param {function | Abstract.Formatter} formatter
+            * @param {Formatter} formatter
             * @returns {Abstract.Axis} The calling Axis.
             */
-            public formatter(formatter: any): Axis;
+            public formatter(formatter: Formatter): Axis;
             /**
             * Gets the current tick mark length.
             *
@@ -1710,6 +1692,19 @@ declare module Plottable {
             */
             public tickLength(length: number): Axis;
             /**
+            * Gets the current end tick mark length.
+            *
+            * @returns {number} The current end tick mark length.
+            */
+            public endTickLength(): number;
+            /**
+            * Sets the end tick mark length.
+            *
+            * @param {number} length The length of the end ticks.
+            * @returns {BaseAxis} The calling Axis.
+            */
+            public endTickLength(length: number): Axis;
+            /**
             * Gets the padding between each tick mark and its associated label.
             *
             * @returns {number} The current padding, in pixels.
@@ -1722,6 +1717,19 @@ declare module Plottable {
             * @returns {Axis} The calling Axis.
             */
             public tickLabelPadding(padding: number): Axis;
+            /**
+            * Gets the size of the gutter (the extra space between the tick labels and the outer edge of the axis).
+            *
+            * @returns {number} The current size of the gutter, in pixels.
+            */
+            public gutter(): number;
+            /**
+            * Sets the size of the gutter (the extra space between the tick labels and the outer edge of the axis).
+            *
+            * @param {number} size The desired size of the gutter, in pixels.
+            * @returns {Axis} The calling Axis.
+            */
+            public gutter(size: number): Axis;
             /**
             * Gets the orientation of the Axis.
             *
@@ -1787,11 +1795,11 @@ declare module Plottable {
             * Creates a NumericAxis.
             *
             * @constructor
-            * @param {QuantitiveScale} scale The QuantitiveScale to base the NumericAxis on.
-            * @param {string} orientation The orientation of the QuantitiveScale (top/bottom/left/right)
-            * @param {Formatter} [formatter] A function to format tick labels.
+            * @param {QuantitativeScale} scale The QuantitativeScale to base the NumericAxis on.
+            * @param {string} orientation The orientation of the QuantitativeScale (top/bottom/left/right)
+            * @param {Formatter} [formatter] A function to format tick labels (default Formatters.general(3, false)).
             */
-            constructor(scale: Abstract.QuantitiveScale, orientation: string, formatter?: any);
+            constructor(scale: Abstract.QuantitativeScale, orientation: string, formatter?: (d: any) => string);
             /**
             * Gets the tick label position relative to the tick marks.
             *
@@ -1847,9 +1855,9 @@ declare module Plottable {
             * @constructor
             * @param {OrdinalScale} scale The scale to base the Axis on.
             * @param {string} orientation The orientation of the Axis (top/bottom/left/right)
-            * @param {formatter} [formatter] The Formatter for the Axis (default Formatter.Identity)
+            * @param {Formatter} [formatter] The Formatter for the Axis (default Formatters.identity())
             */
-            constructor(scale: Scale.Ordinal, orientation?: string, formatter?: any);
+            constructor(scale: Scale.Ordinal, orientation?: string, formatter?: (d: any) => string);
         }
     }
 }
@@ -1902,25 +1910,31 @@ declare module Plottable {
         }
         class Legend extends Abstract.Component {
             /**
+            * The css class applied to each legend row
+            */
+            static SUBELEMENT_CLASS: string;
+            /**
             * Creates a Legend.
-            * A legend consists of a series of legend rows, each with a color and label taken from the colorScale.
-            * The rows will be displayed in the order of the colorScale domain.
-            * This legend also allows interactions, through the functions "toggleCallback" and "hoverCallback"
+            *
+            * A legend consists of a series of legend rows, each with a color and label taken from the `colorScale`.
+            * The rows will be displayed in the order of the `colorScale` domain.
+            * This legend also allows interactions, through the functions `toggleCallback` and `hoverCallback`
             * Setting a callback will also put classes on the individual rows.
             *
             * @constructor
-            * @param {ColorScale} colorScale
+            * @param {Scale.Color} colorScale
             */
             constructor(colorScale?: Scale.Color);
             public remove(): void;
             /**
             * Assigns or gets the callback to the Legend
+            *
             * This callback is associated with toggle events, which trigger when a legend row is clicked.
             * Internally, this will change the state of of the row from "toggled-on" to "toggled-off" and vice versa.
             * Setting a callback will also set a class to each individual legend row as "toggled-on" or "toggled-off".
             * Call with argument of null to remove the callback. This will also remove the above classes to legend rows.
             *
-            * @param{ToggleCallback} callback The new callback function
+            * @param {ToggleCallback} callback The new callback function
             */
             public toggleCallback(callback: ToggleCallback): Legend;
             public toggleCallback(): ToggleCallback;
@@ -1955,28 +1969,11 @@ declare module Plottable {
             * Creates a set of Gridlines.
             * @constructor
             *
-            * @param {QuantitiveScale} xScale The scale to base the x gridlines on. Pass null if no gridlines are desired.
-            * @param {QuantitiveScale} yScale The scale to base the y gridlines on. Pass null if no gridlines are desired.
+            * @param {QuantitativeScale} xScale The scale to base the x gridlines on. Pass null if no gridlines are desired.
+            * @param {QuantitativeScale} yScale The scale to base the y gridlines on. Pass null if no gridlines are desired.
             */
-            constructor(xScale: Abstract.QuantitiveScale, yScale: Abstract.QuantitiveScale);
+            constructor(xScale: Abstract.QuantitativeScale, yScale: Abstract.QuantitativeScale);
             public remove(): Gridlines;
-        }
-    }
-}
-
-
-declare module Plottable {
-    module Util {
-        module Axis {
-            var ONE_DAY: number;
-            /**
-            * Generates a relative date axis formatter.
-            *
-            * @param {number} baseValue The start date (as epoch time) used in computing relative dates
-            * @param {number} increment The unit used in calculating relative date tick values
-            * @param {string} label The label to append to tick values
-            */
-            function generateRelativeDateFormatter(baseValue: number, increment?: number, label?: string): (tickValue: any) => string;
         }
     }
 }
@@ -2046,7 +2043,6 @@ declare module Plottable {
 declare module Plottable {
     module Abstract {
         class BarPlot extends XYPlot {
-            static DEFAULT_WIDTH: number;
             static _BarAlignmentToFactor: {
                 [alignment: string]: number;
             };
@@ -2102,6 +2098,15 @@ declare module Plottable {
 
 declare module Plottable {
     module Plot {
+        /**
+        * A VerticalBarPlot draws bars vertically.
+        * Key projected attributes:
+        *  - "width" - the horizontal width of a bar.
+        *      - if an ordinal scale is attached, this defaults to ordinalScale.rangeBand()
+        *      - if a quantitative scale is attached, this defaults to 10
+        *  - "x" - the horizontal position of a bar
+        *  - "y" - the vertical height of a bar
+        */
         class VerticalBar extends Abstract.BarPlot {
             static _BarAlignmentToFactor: {
                 [alignment: string]: number;
@@ -2112,9 +2117,9 @@ declare module Plottable {
             * @constructor
             * @param {IDataset} dataset The dataset to render.
             * @param {Scale} xScale The x scale to use.
-            * @param {QuantitiveScale} yScale The y scale to use.
+            * @param {QuantitativeScale} yScale The y scale to use.
             */
-            constructor(dataset: any, xScale: Abstract.Scale, yScale: Abstract.QuantitiveScale);
+            constructor(dataset: any, xScale: Abstract.Scale, yScale: Abstract.QuantitativeScale);
         }
     }
 }
@@ -2122,6 +2127,15 @@ declare module Plottable {
 
 declare module Plottable {
     module Plot {
+        /**
+        * A HorizontalBarPlot draws bars horizontally.
+        * Key projected attributes:
+        *  - "width" - the vertical height of a bar (since the bar is rotated horizontally)
+        *      - if an ordinal scale is attached, this defaults to ordinalScale.rangeBand()
+        *      - if a quantitative scale is attached, this defaults to 10
+        *  - "x" - the horizontal length of a bar
+        *  - "y" - the vertical position of a bar
+        */
         class HorizontalBar extends Abstract.BarPlot {
             static _BarAlignmentToFactor: {
                 [alignment: string]: number;
@@ -2132,10 +2146,10 @@ declare module Plottable {
             *
             * @constructor
             * @param {IDataset} dataset The dataset to render.
-            * @param {QuantitiveScale} xScale The x scale to use.
+            * @param {QuantitativeScale} xScale The x scale to use.
             * @param {Scale} yScale The y scale to use.
             */
-            constructor(dataset: any, xScale: Abstract.QuantitiveScale, yScale: Abstract.Scale);
+            constructor(dataset: any, xScale: Abstract.QuantitativeScale, yScale: Abstract.Scale);
         }
     }
 }
@@ -2160,6 +2174,9 @@ declare module Plottable {
 
 declare module Plottable {
     module Plot {
+        /**
+        * An AreaPlot draws a filled region (area) between the plot's projected "y" and projected "y0" values.
+        */
         class Area extends Line {
             /**
             * Creates an AreaPlot.
@@ -2355,17 +2372,17 @@ declare module Plottable {
 declare module Plottable {
     module Interaction {
         class PanZoom extends Abstract.Interaction {
-            public xScale: Abstract.QuantitiveScale;
-            public yScale: Abstract.QuantitiveScale;
+            public xScale: Abstract.QuantitativeScale;
+            public yScale: Abstract.QuantitativeScale;
             /**
             * Creates a PanZoomInteraction.
             *
             * @constructor
             * @param {Component} componentToListenTo The component to listen for interactions on.
-            * @param {QuantitiveScale} xScale The X scale to update on panning/zooming.
-            * @param {QuantitiveScale} yScale The Y scale to update on panning/zooming.
+            * @param {QuantitativeScale} [xScale] The X scale to update on panning/zooming.
+            * @param {QuantitativeScale} [yScale] The Y scale to update on panning/zooming.
             */
-            constructor(componentToListenTo: Abstract.Component, xScale: Abstract.QuantitiveScale, yScale: Abstract.QuantitiveScale);
+            constructor(componentToListenTo: Abstract.Component, xScale?: Abstract.QuantitativeScale, yScale?: Abstract.QuantitativeScale);
             public resetZoom(): void;
         }
     }
@@ -2391,7 +2408,7 @@ declare module Plottable {
             * @returns {AreaInteraction} The calling AreaInteraction.
             */
             public callback(cb?: (a: any) => any): Drag;
-            public setupZoomCallback(xScale?: Abstract.QuantitiveScale, yScale?: Abstract.QuantitiveScale): Drag;
+            public setupZoomCallback(xScale?: Abstract.QuantitativeScale, yScale?: Abstract.QuantitativeScale): Drag;
         }
     }
 }
@@ -2435,6 +2452,101 @@ declare module Plottable {
     module Interaction {
         class YDragBox extends DragBox {
             public setBox(y0: number, y1: number): YDragBox;
+        }
+    }
+}
+
+
+declare module Plottable {
+    module Abstract {
+        class Dispatcher extends PlottableObject {
+            /**
+            * Creates a Dispatcher with the specified target.
+            *
+            * @param {D3.Selection} target The selection to listen for events on.
+            */
+            constructor(target: D3.Selection);
+            /**
+            * Gets the target of the Dispatcher.
+            *
+            * @returns {D3.Selection} The Dispatcher's current target.
+            */
+            public target(): D3.Selection;
+            /**
+            * Sets the target of the Dispatcher.
+            *
+            * @param {D3.Selection} target The element to listen for updates on.
+            * @returns {Dispatcher} The calling Dispatcher.
+            */
+            public target(targetElement: D3.Selection): Dispatcher;
+            /**
+            * Attaches the Dispatcher's listeners to the Dispatcher's target element.
+            *
+            * @returns {Dispatcher} The calling Dispatcher.
+            */
+            public connect(): Dispatcher;
+            /**
+            * Detaches the Dispatcher's listeners from the Dispatchers' target element.
+            *
+            * @returns {Dispatcher} The calling Dispatcher.
+            */
+            public disconnect(): Dispatcher;
+        }
+    }
+}
+
+
+declare module Plottable {
+    module Dispatcher {
+        class Mouse extends Abstract.Dispatcher {
+            /**
+            * Creates a Mouse Dispatcher with the specified target.
+            *
+            * @param {D3.Selection} target The selection to listen for events on.
+            */
+            constructor(target: D3.Selection);
+            /**
+            * Gets the current callback to be called on mouseover.
+            *
+            * @return {(location: Point) => any} The current mouseover callback.
+            */
+            public mouseover(): (location: Point) => any;
+            /**
+            * Attaches a callback to be called on mouseover.
+            *
+            * @param {(location: Point) => any} callback A function that takes the pixel position of the mouse event.
+            *                                            Pass in null to remove the callback.
+            * @return {Mouse} The calling Mouse Handler.
+            */
+            public mouseover(callback: (location: Point) => any): Mouse;
+            /**
+            * Gets the current callback to be called on mousemove.
+            *
+            * @return {(location: Point) => any} The current mousemove callback.
+            */
+            public mousemove(): (location: Point) => any;
+            /**
+            * Attaches a callback to be called on mousemove.
+            *
+            * @param {(location: Point) => any} callback A function that takes the pixel position of the mouse event.
+            *                                            Pass in null to remove the callback.
+            * @return {Mouse} The calling Mouse Handler.
+            */
+            public mousemove(callback: (location: Point) => any): Mouse;
+            /**
+            * Gets the current callback to be called on mouseout.
+            *
+            * @return {(location: Point) => any} The current mouseout callback.
+            */
+            public mouseout(): (location: Point) => any;
+            /**
+            * Attaches a callback to be called on mouseout.
+            *
+            * @param {(location: Point) => any} callback A function that takes the pixel position of the mouse event.
+            *                                            Pass in null to remove the callback.
+            * @return {Mouse} The calling Mouse Handler.
+            */
+            public mouseout(callback: (location: Point) => any): Mouse;
         }
     }
 }
