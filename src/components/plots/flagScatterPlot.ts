@@ -65,10 +65,18 @@ export module Plot {
       textAttrToProjector["y"] = () => -3; // Centering
       var flagContainers = this.renderArea.selectAll("g").data(this._dataSource.data());
       var container = flagContainers.enter().append("g");
-      container.on("click", (d, i) => { this.clickCallback(d, i); });
+      container.on("click", (d, i) => {
+        if (containerAttrToProjector["class"](d, i).indexOf("active") >= 0) {
+            containerAttrToProjector["class"] = () => "graph-event-flag";
+        } else {
+            containerAttrToProjector["class"] = () => "graph-event-flag active";
+        }
+        this._applyAnimatedAttributes(flagContainers, "flags-reset", containerAttrToProjector);
+        this.clickCallback(d, i);
+      });
       var flags = container.append("path");
       var text = container.append("text");
-      text.text((d: any) => d.name ? d.name : "";);
+      text.text((d: any) => d.name ? d.name : "");
       if (this._dataChanged) {
           this._applyAnimatedAttributes(flagContainers, "flags-reset", containerAttrToProjector);
       }
