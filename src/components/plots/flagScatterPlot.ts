@@ -3,6 +3,7 @@
 module Plottable {
 export module Plot {
   export class FlagScatter extends Abstract.XYPlot {
+    private clickCallback: (d: any, i: number) => void;
 
     public _animators: Animator.IPlotAnimatorMap = {
       "flags-reset"      : new Animator.Null(),
@@ -46,8 +47,8 @@ export module Plot {
       containerAttrToProjector["class"] = () => "graph-event-flag";
       // TODO (styu): get rid of magic numbers
       containerAttrToProjector["transform"] = (d, i) => {
-          x = xFunction(d, i);
-          y = yFunction(d, i) + 20;
+          var x = xFunction(d, i);
+          var y = yFunction(d, i) + 20;
           return "translate(" + x + "," + y + ")";
       }
       delete containerAttrToProjector["x"];
@@ -64,10 +65,10 @@ export module Plot {
       textAttrToProjector["y"] = () => -3; // Centering
       var flagContainers = this.renderArea.selectAll("g").data(this._dataSource.data());
       var container = flagContainers.enter().append("g");
-      container.on("click", (d, i) => { _this.clickCallback(d, i); });
-      flags = container.append("path");
-      text = container.append("text");
-      text.text((d) => { d.name || ""; });
+      container.on("click", (d, i) => { this.clickCallback(d, i); });
+      var flags = container.append("path");
+      var text = container.append("text");
+      text.text((d: any) => { d.name || ""; });
       if (this._dataChanged) {
           this._applyAnimatedAttributes(flagContainers, "flags-reset", containerAttrToProjector);
       }
