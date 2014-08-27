@@ -44,6 +44,7 @@ export module Plot {
       delete attrToProjector["y"];
       var containerAttrToProjector = this._generateAttrToProjector();
       containerAttrToProjector["class"] = () => "graph-event-flag";
+      // TODO (styu): get rid of magic numbers
       containerAttrToProjector["transform"] = (d, i) => {
           x = xFunction(d, i);
           y = yFunction(d, i) + 20;
@@ -63,18 +64,10 @@ export module Plot {
       textAttrToProjector["y"] = () => -3; // Centering
       var flagContainers = this.renderArea.selectAll("g").data(this._dataSource.data());
       var container = flagContainers.enter().append("g");
-      var _this = this;
       container.on("click", (d, i) => { _this.clickCallback(d, i); });
       flags = container.append("path");
       text = container.append("text");
-      text.text((d) => {
-          if (d.name) {
-              return d.name;
-          }
-          else {
-              return "";
-          }
-      });
+      text.text((d) => { d.name || ""; });
       if (this._dataChanged) {
           this._applyAnimatedAttributes(flagContainers, "flags-reset", containerAttrToProjector);
       }
