@@ -51,6 +51,7 @@
 /// <reference path="components/horizontalLegend.ts" />
 /// <reference path="components/gridlines.ts" />
 
+/// <reference path="components/plots/flagScatterPlot.ts" />
 /// <reference path="components/plots/scatterPlot.ts" />
 /// <reference path="components/plots/gridPlot.ts" />
 /// <reference path="components/plots/abstractBarPlot.ts" />
