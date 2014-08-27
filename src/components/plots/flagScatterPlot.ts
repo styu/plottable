@@ -26,10 +26,10 @@ export module Plot {
      * @param {Scale} xScale The x scale to use.
      * @param {Scale} yScale The y scale to use.
      */
-    constructor(dataset: any, xScale: Abstract.Scale, yScale: Abstract.Scale, callback: (d: any, i: number) => void) {
+    constructor(dataset: any, xScale: Abstract.Scale, yScale: Abstract.Scale, clickCallback: (d: any, i: number) => void) {
       super(dataset, xScale, yScale);
       this.classed("scatter-plot", true);
-      this.clickCallback = callback;
+      this.clickCallback = clickCallback;
     }
 
     public _paint() {
@@ -68,7 +68,7 @@ export module Plot {
       container.on("click", (d, i) => { this.clickCallback(d, i); });
       var flags = container.append("path");
       var text = container.append("text");
-      text.text((d: any) => { d.name || ""; });
+      text.text((d: any) => d.name ? d.name : "";);
       if (this._dataChanged) {
           this._applyAnimatedAttributes(flagContainers, "flags-reset", containerAttrToProjector);
       }
