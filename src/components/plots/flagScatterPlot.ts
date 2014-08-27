@@ -4,6 +4,9 @@ module Plottable {
 export module Plot {
   export class FlagScatter extends Abstract.XYPlot {
     private clickCallback: (d: any, i: number) => void;
+    private FLAG_WIDTH: number = 20;
+    private FLAG_HEIGHT: number = 15;
+    private CENTER_RATIO: number = 3/8;
 
     public _animators: Animator.IPlotAnimatorMap = {
       "flags-reset"      : new Animator.Null(),
@@ -37,7 +40,7 @@ export module Plot {
       var attrToProjector = this._generateAttrToProjector();
       var xFunction = attrToProjector["x"];
       var yFunction = attrToProjector["y"];
-      attrToProjector["d"] = () => "m0,0L20,0L20,-15L0,-15L0,10z";
+      attrToProjector["d"] = () => "m0,-10L" + this.FLAG_WIDTH + ",-10L" + this.FLAG_WIDTH + ",-25L0,-25L0,0z";
       attrToProjector["stroke"] = () => "#C9CBCB";
       attrToProjector["stroke-width"] = () => "1px";
       attrToProjector["fill"] = () => "#EDF0F2";
@@ -45,10 +48,9 @@ export module Plot {
       delete attrToProjector["y"];
       var containerAttrToProjector = this._generateAttrToProjector();
       containerAttrToProjector["class"] = () => "graph-event-flag";
-      // TODO (styu): get rid of magic numbers
       containerAttrToProjector["transform"] = (d, i) => {
           var x = xFunction(d, i);
-          var y = yFunction(d, i) + 20;
+          var y = yFunction(d, i);
           return "translate(" + x + "," + y + ")";
       }
       delete containerAttrToProjector["x"];
@@ -57,12 +59,9 @@ export module Plot {
       textAttrToProjector["font-family"] = () => "BlenderPro-Book";
       textAttrToProjector["fill"] = () => "#545758";
       textAttrToProjector["x"] = (d, i) => { // Centering
-          if (d.name.length == 1)
-              return 7;
-          else
-              return 2; // Hacky
+          return Math.floor(this.FLAG_WIDTH * this.CENTER_RATIO / d.name.length);
       };
-      textAttrToProjector["y"] = () => -3; // Centering
+      textAttrToProjector["y"] = () => -this.FLAG_HEIGHT; // Centering
       var flagContainers = this.renderArea.selectAll("g").data(this._dataSource.data());
       var container = flagContainers.enter().append("g");
       container.on("click", (d, i) => {
